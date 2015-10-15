@@ -40,29 +40,41 @@ foreach ($subscriptions as $entity => $enabled) {
 setLastDataUpdateTimestamp($current_timestamp);
 
 // Fetches and import data from specified entity
-function fetchData($client, $entity, $params=array()) {
-  $msg = $client->get($entity, $params);
-  $code = $msg['code'];
-  $body = $msg['body'];
+function fetchData($client, $entity, $params=array(), $retries=0) {
+  // Retry 5 times before failing
+  if($retries >= 5) {
+    error_log('Cannot fetch data due to previous errors, exiting');
+    exit(1);
+  }
 
-  if($code != 200) {
-    error_log("Cannot fetch connec entities=$entity, code=$code, body=$body");
-    return array();
-  } else {
-    error_log("Received entities=$entity, code=$code");
-    $result = json_decode($body, true);
+  try {
+    $msg = $client->get($entity, $params);
+    $code = $msg['code'];
+    $body = $msg['body'];
 
-    // Dynamically find mappers and map entities
-    foreach(BaseMapper::getMappers() as $mapperClass) {
-      if (class_exists($mapperClass)) {
-        $test_class = new ReflectionClass($mapperClass);
-        if($test_class->isAbstract()) { continue; }
+    if($code != 200) {
+      throw new Exception("Cannot fetch connec entities=$entity, code=$code, retries=$retries");
+    } else {
+      error_log("Received entities=$entity, code=$code");
+      $result = json_decode($body, true);
 
-        $mapper = new $mapperClass();
-        $mapper->persistAll($result[$mapper->getConnecResourceName()]);
+      // Dynamically find mappers and map entities
+      foreach(BaseMapper::getMappers() as $mapperClass) {
+        if (class_exists($mapperClass)) {
+          $test_class = new ReflectionClass($mapperClass);
+          if($test_class->isAbstract()) { continue; }
+
+          $mapper = new $mapperClass();
+          $mapper->persistAll($result[$mapper->getConnecResourceName()]);
+        }
       }
-    }
 
-    return $result;
+      return $result;
+    }
+  } catch (Exception $e) {
+    // Retry with an incremental delay
+    error_log("Cannot update entities: " . $e->getMessage());
+    sleep($retries * 5);
+    return fetchData($client, $entity, $params, $retries+1);
   }
 }
