@@ -1,0 +1,69 @@
+### vTiger configuration tasks ###
+
+- name: vTiger | Ensure MySQL is running
+  command: service mysql start
+  ignore_errors: yes
+
+- name: vTiger | Configure Apache virtual host
+  template: 
+    src: etc-apache24-confd-vtiger6-conf
+    dest: /etc/apache2/sites-available/vtigercrm.conf
+    owner: root
+    mode: 755
+
+- name: vTiger | Enable Apache virtual host 
+  file: src=/etc/apache2/sites-available/vtigercrm.conf dest=/etc/apache2/sites-enabled/vtigercrm.conf state=link
+
+- name: Apache | Restart the Apache service
+  service: 
+    name: apache2 
+    state: restarted
+
+- name: vTiger | Configuration file config.php
+  template: 
+    src: vtiger-config.inc.php
+    dest: "{{ vtiger_root_path }}/config.inc.php"
+    owner: root
+    mode: 755
+
+- name: vTiger | Configuration file user_privileges
+  copy: 
+    src: "{{ item }}"
+    dest: "{{ vtiger_root_path }}/user_privileges/{{ item }}"
+    owner: root
+    mode: 755
+  with_items:
+    - sharing_privileges_1.php
+    - user_privileges_1.php
+
+- name: vTiger | Set file permissions
+  file:
+    path: "{{ vtiger_root_path }}"
+    mode: 0755
+    owner: www-data
+    group: www-data
+    state: directory
+    recurse: yes
+
+- name: vTiger | Set log files permissions
+  file:
+    path: /var/log/apache2
+    mode: 0755
+    owner: www-data
+    group: www-data
+    state: directory
+    recurse: yes
+
+- name: vTiger | Configuration file maestrano.json
+  template: 
+    src: vtiger-maestrano.json
+    dest: "{{ vtiger_root_path }}/maestrano.json"
+    owner: www-data
+    group: www-data
+    mode: 777
+
+- name: vTiger | Import Connec! data
+  shell: "(nohup php initialize.php 1>/var/log/apache2/vtigercrm_initialize.log 2>&1) &"
+  args:
+    chdir: "{{ vtiger_root_path }}/maestrano/scripts"
+  sudo_user: www-data

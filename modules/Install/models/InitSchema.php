@@ -774,7 +774,7 @@ class Install_InitSchema_Model {
     	$user = CRMEntity::getInstance('Users');
 		//Fix for http://trac.vtiger.com/cgi-bin/trac.cgi/ticket/7974
         $user->column_fields["first_name"] = $userFirstName; 
- 	$user->column_fields["last_name"] = $userLastName; 
+        $user->column_fields["last_name"] = $userLastName; 
         //Ends
         $user->column_fields["user_name"] = 'admin';
         $user->column_fields["status"] = 'Active';

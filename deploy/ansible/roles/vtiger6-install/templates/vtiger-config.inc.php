@@ -186,7 +186,7 @@ $display_empty_home_blocks = false;
 $disable_stats_tracking = false;
 
 // Generating Unique Application Key
-$application_unique_key = '4aff91db2905088656897d924a4de2e9';
+$application_unique_key = "{{ lookup('password', '/etc/ansible/vtiger6_application_unique_key length=24') }}";
 
 // trim descriptions, titles in listviews to this value
 $listview_max_textlength = 40;
