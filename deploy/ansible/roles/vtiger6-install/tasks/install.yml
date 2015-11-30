@@ -10,6 +10,21 @@
   command: service mysql start
   ignore_errors: yes
 
+- name: vTiger | Check if a random password has already been generated
+  stat: path=/etc/ansible/vtiger6_db_password
+  register: random_password_generated
+
+- name: vTiger | Use already generated password
+  set_fact:
+    vtiger_db_password: "{{ lookup('password', '/etc/ansible/vtiger6_db_password length=12') }}"
+  when: random_password_generated.stat.exists == True
+
+- name: vTiger | Generate random password
+  set_fact:
+    vtiger_db_password: "{{ lookup('password', '/etc/ansible/vtiger6_db_password length=12') }}"
+  when: random_password_generated.stat.exists == False
+  when: not (skip_generate_password is defined and skip_generate_password)
+
 - name: vTiger | Create vTiger database
   mysql_db:
     login_user: root
